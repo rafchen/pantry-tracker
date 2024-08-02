@@ -95,16 +95,16 @@ export default function Home() {
       </Modal>
       <Button variant="contained" onClick={handleOpen}>Add New Item</Button>
       <Box border="1px solid #333">
-        <Box width="800px" height="100px" bgcolor="ADD8E6" alignItems="center" justifyContent="center" display="flex">
+        <Box width="800px" height="100px" bgcolor="#ADD8E6" alignItems="center" justifyContent="center" display="flex">
           <Typography variant="h2" color="#333">Inventory Items</Typography>
         </Box>
         <Stack width="800px" height="300px" spacing={2} overflow="auto">
           {inventory.map(({ name, quantity }) => (
             <Box key={name} width="100%" minHeight="150px" display="flex" alignItems="center" justifyContent="space-between" bgcolor="#f0f0f0" padding={5}>
-              <Typography variant="h3" color="#333" textAlign="center">
+              <Typography variant="h3" color="#000" textAlign="center">
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant="h3" color="#333" textAlign="center">{quantity}</Typography>
+              <Typography variant="h3" color="#000" textAlign="center">{quantity}</Typography>
               <Stack direction="row" spacing={2}>
                 <Button variant="contained" 
                         onClick={() => {
