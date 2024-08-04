@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Box, Stack, Typography, Button, Modal, TextField, Grid } from '@mui/material'
-import { firestore } from '../app/firebase';
-
+import { firestore } from '../app/firebase'
 import {
   collection,
   doc,
@@ -30,6 +29,7 @@ const style = {
 }
 
 export default function Home() {
+
   const [inventory, setInventory] = useState([])
   const [filteredInventory, setFilteredInventory] = useState([])
   const [open, setOpen] = useState(false)

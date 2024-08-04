@@ -1,7 +1,8 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBU3Dett4M5ITgVywL0B-JZwW2Sz3OVEvo",
   authDomain: "inventory-management-3bb59.firebaseapp.com",
@@ -15,6 +16,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
-const analytics = getAnalytics(app);
 
-export { firestore };
+let analytics;
+if (typeof window !== 'undefined' && isSupported()) {
+  analytics = getAnalytics(app);
+}
+
+export { firestore, analytics };
