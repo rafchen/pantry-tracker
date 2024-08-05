@@ -11,7 +11,6 @@ const {
   HarmBlockThreshold,
 } = require("@google/generative-ai");
 
-// Initialize Google Generative AI
 const genAI = new GoogleGenerativeAI("AIzaSyD8tLeg83D7ZfsXsLr25ZwX-cTzIR3Te5A");
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-pro",
@@ -40,7 +39,6 @@ const style = {
   gap: 3,
 };
 
-// Modal Component for Adding Items
 function AddItemModal({ open, handleClose, addItem, itemName, setItemName }) {
   return (
     <Modal
@@ -144,11 +142,10 @@ export default function Home() {
     setSearchText(value);
     const filtered = inventory.filter((item) => item.name.toLowerCase().startsWith(value));
     setFilteredInventory(filtered);
-  }, 300); // Adjust debounce delay as needed
+  }, 300); 
 
   const generateRecipeRecommendations = async () => {
     try {
-      // Define the ingredients you have and need to get
       const availableIngredients = filteredInventory.map(item => item.name);
       const prompt = `I have the following ingredients: ${availableIngredients.join(', ')}. Can you suggest some recipes I can make? For each recipe, please list:
       1. Ingredients required.
