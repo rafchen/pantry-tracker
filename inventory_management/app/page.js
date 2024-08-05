@@ -2,14 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Stack, Typography, Button, Modal, TextField, Grid } from '@mui/material';
-import { firestore } from '../app/firebase';
+import { firestore } from '../app/firebase'; 
 import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import debounce from 'lodash/debounce';
-const {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} = require("@google/generative-ai");
+import { GoogleGenerativeAI } from '@google/generative-ai'; 
 
 const genAI = new GoogleGenerativeAI("AIzaSyD8tLeg83D7ZfsXsLr25ZwX-cTzIR3Te5A");
 const model = genAI.getGenerativeModel({
@@ -24,7 +19,7 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-const style = {
+const modalStyle = {
   position: 'absolute',
   top: '50%',
   left: '50%',
@@ -39,7 +34,7 @@ const style = {
   gap: 3,
 };
 
-function AddItemModal({ open, handleClose, addItem, itemName, setItemName }) {
+function AddItemModal({ open, handleClose, addItem, itemName, setItemName, itemQuantity, setItemQuantity }) {
   return (
     <Modal
       open={open}
@@ -47,24 +42,34 @@ function AddItemModal({ open, handleClose, addItem, itemName, setItemName }) {
       aria-labelledby="modal-modal-title"
       aria-describedby="modal-modal-description"
     >
-      <Box sx={style}>
+      <Box sx={modalStyle}>
         <Typography id="modal-modal-title" variant="h6" component="h2" color="black">
           Add Item
         </Typography>
-        <Stack width="100%" direction={'row'} spacing={2}>
+        <Stack width="100%" direction="column" spacing={2}>
           <TextField
-            id="outlined-basic"
+            id="outlined-basic-item"
             label="Item"
             variant="outlined"
             fullWidth
             value={itemName}
             onChange={(e) => setItemName(e.target.value)}
           />
-          <Button
+          <TextField
+            id="outlined-basic-quantity"
+            label="Quantity"
             variant="outlined"
+            type="number"
+            fullWidth
+            value={itemQuantity}
+            onChange={(e) => setItemQuantity(e.target.value)}
+          />
+          <Button
+            variant="contained"
             onClick={() => {
-              addItem(itemName);
+              addItem(itemName, itemQuantity);
               setItemName('');
+              setItemQuantity('');
               handleClose();
             }}
           >
@@ -76,16 +81,67 @@ function AddItemModal({ open, handleClose, addItem, itemName, setItemName }) {
   );
 }
 
+function RemoveItemModal({ open, handleClose, removeItem, itemName, setItemName, itemQuantity, setItemQuantity }) {
+  return (
+    <Modal
+      open={open}
+      onClose={handleClose}
+      aria-labelledby="modal-modal-title"
+      aria-describedby="modal-modal-description"
+    >
+      <Box sx={modalStyle}>
+        <Typography id="modal-modal-title" variant="h6" component="h2" color="black">
+          Remove Item
+        </Typography>
+        <Stack width="100%" direction="column" spacing={2}>
+          <TextField
+            id="outlined-basic-item"
+            label="Item"
+            variant="outlined"
+            fullWidth
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+          />
+          <TextField
+            id="outlined-basic-quantity"
+            label="Quantity"
+            variant="outlined"
+            type="number"
+            fullWidth
+            value={itemQuantity}
+            onChange={(e) => setItemQuantity(e.target.value)}
+          />
+          <Button
+            variant="contained"
+            onClick={() => {
+              removeItem(itemName, itemQuantity);
+              setItemName('');
+              setItemQuantity('');
+              handleClose();
+            }}
+          >
+            Remove
+          </Button>
+        </Stack>
+      </Box>
+    </Modal>
+  );
+}
+
 export default function Home() {
   const [inventory, setInventory] = useState([]);
   const [filteredInventory, setFilteredInventory] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [itemQuantity, setItemQuantity] = useState('');
   const [itemName, setItemName] = useState('');
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openRemove, setOpenRemove] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [recommendedRecipes, setRecommendedRecipes] = useState('');
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleOpenAdd = () => setOpenAdd(true);
+  const handleCloseAdd = () => setOpenAdd(false);
+  const handleOpenRemove = () => setOpenRemove(true);
+  const handleCloseRemove = () => setOpenRemove(false);
 
   const updateInventory = async () => {
     try {
@@ -103,15 +159,16 @@ export default function Home() {
     updateInventory();
   }, []);
 
-  const addItem = async (item) => {
+  const addItem = async (item, quantity) => {
     try {
       const docRef = doc(collection(firestore, 'inventory'), item);
       const docSnap = await getDoc(docRef);
+      const quantityNum = parseInt(quantity, 10);
       if (docSnap.exists()) {
-        const { quantity } = docSnap.data();
-        await setDoc(docRef, { quantity: quantity + 1 });
+        const { quantity: existingQuantity } = docSnap.data();
+        await setDoc(docRef, { quantity: existingQuantity + quantityNum });
       } else {
-        await setDoc(docRef, { quantity: 1 });
+        await setDoc(docRef, { quantity: quantityNum });
       }
       await updateInventory();
     } catch (error) {
@@ -119,16 +176,17 @@ export default function Home() {
     }
   };
 
-  const removeItem = async (item) => {
+  const removeItem = async (item, quantity) => {
     try {
       const docRef = doc(collection(firestore, 'inventory'), item);
       const docSnap = await getDoc(docRef);
+      const quantityNum = parseInt(quantity, 10);
       if (docSnap.exists()) {
-        const { quantity } = docSnap.data();
-        if (quantity === 1) {
+        const { quantity: existingQuantity } = docSnap.data();
+        if (existingQuantity <= quantityNum) {
           await deleteDoc(docRef);
         } else {
-          await setDoc(docRef, { quantity: quantity - 1 });
+          await setDoc(docRef, { quantity: existingQuantity - quantityNum });
         }
       }
       await updateInventory();
@@ -137,12 +195,12 @@ export default function Home() {
     }
   };
 
-  const handleSearchChange = debounce((event) => {
+  const handleSearchChange = (event) => {
     const value = event.target.value.toLowerCase();
     setSearchText(value);
-    const filtered = inventory.filter((item) => item.name.toLowerCase().startsWith(value));
+    const filtered = inventory.filter((item) => item.name.toLowerCase().includes(value));
     setFilteredInventory(filtered);
-  }, 300); 
+  };
 
   const generateRecipeRecommendations = async () => {
     try {
@@ -150,22 +208,18 @@ export default function Home() {
       const prompt = `I have the following ingredients: ${availableIngredients.join(', ')}. Can you suggest some recipes I can make? For each recipe, please list:
       1. Ingredients required.
       2. Instructions.
+      3. Please format it in a way that's appealing to the client.
       Additionally, if there are any ingredients I don't have, please list those as well.`;
-  
-      console.log('Generating recipes with ingredients:', availableIngredients);
-  
+
       const chatSession = model.startChat({
         generationConfig,
         history: [],
       });
-  
-      console.log('Chat session started');
-  
+
       const result = await chatSession.sendMessage(prompt);
-      console.log('API response received:', result);
-  
+
       if (result && result.response && typeof result.response.text === 'function') {
-        const recipes = result.response.text();
+        const recipes = await result.response.text();
         if (recipes.trim()) {
           setRecommendedRecipes(recipes);
         } else {
@@ -177,7 +231,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error generating recommendations:', error);
-  
+
       if (error.response) {
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
@@ -187,7 +241,7 @@ export default function Home() {
       } else {
         console.error('Error message:', error.message);
       }
-  
+
       setRecommendedRecipes('Error generating recommendations. Please try again later.');
     }
   };
@@ -196,26 +250,44 @@ export default function Home() {
     <Box
       width="100vw"
       height="100vh"
-      display={'flex'}
-      justifyContent={'center'}
-      flexDirection={'column'}
-      alignItems={'center'}
+      display="flex"
+      justifyContent="center"
+      flexDirection="column"
+      alignItems="center"
       gap={2}
+      overflow="auto"
+      padding={2}
     >
       <AddItemModal
-        open={open}
-        handleClose={handleClose}
+        open={openAdd}
+        handleClose={handleCloseAdd}
         addItem={addItem}
         itemName={itemName}
         setItemName={setItemName}
+        itemQuantity={itemQuantity}
+        setItemQuantity={setItemQuantity}
+      />
+      <RemoveItemModal
+        open={openRemove}
+        handleClose={handleCloseRemove}
+        removeItem={removeItem}
+        itemName={itemName}
+        setItemName={setItemName}
+        itemQuantity={itemQuantity}
+        setItemQuantity={setItemQuantity}
       />
       <Grid container justifyContent="center" spacing={2}>
         <Grid item>
-          <Button variant="contained" onClick={handleOpen}>
+          <Button variant="contained" onClick={handleOpenAdd} size="large">
             Add New Item
           </Button>
         </Grid>
         <Grid item>
+          <Button variant="outlined" onClick={handleOpenRemove} size="large">
+            Remove Item
+          </Button>
+        </Grid>
+        <Grid item xs={12} md={6}>
           <TextField
             id="search-bar"
             label="Search Items"
@@ -223,25 +295,40 @@ export default function Home() {
             fullWidth
             value={searchText}
             onChange={handleSearchChange}
+            size="small"
           />
         </Grid>
       </Grid>
-      <Box border={'1px solid #333'} mt={2}>
+      <Box border="1px solid #333" mt={2} width="90%" height="60vh" overflow="auto">
         <Box
-          width="800px"
-          bgcolor={'#ADD8E6'}
-          display={'flex'}
-          justifyContent={'center'}
-          alignItems={'center'}
+          width="100%"
+          bgcolor="#ADD8E6"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
           p={2}
         >
-          <Typography variant={'h4'} color={'#333'} textAlign={'center'}>
+          <Typography variant="h4" color="#333" textAlign="center">
             Inventory Items
           </Typography>
         </Box>
-        <Stack width="800px" height="600px" overflow={'auto'}>
+        <Stack width="100%">
+          <Stack
+            direction="row"
+            spacing={4}
+            p={2}
+            bgcolor="#f5f5f5"
+            sx={{ borderBottom: '2px solid #333' }}
+          >
+            <Typography variant="h6" color="#333" flex="1" fontWeight="bold">
+              Item
+            </Typography>
+            <Typography variant="h6" color="#333" flex="1" textAlign="center" fontWeight="bold">
+              Quantity
+            </Typography>
+          </Stack>
           {filteredInventory.length === 0 ? (
-            <Box display={'flex'} justifyContent={'center'} alignItems={'center'} height="100%">
+            <Box display="flex" justifyContent="center" alignItems="center" height="100%">
               <Typography variant="h6" color="textSecondary">
                 No items found.
               </Typography>
@@ -250,24 +337,17 @@ export default function Home() {
             filteredInventory.map((item) => (
               <Stack
                 key={item.name}
-                direction={'row'}
-                justifyContent={'space-between'}
+                direction="row"
+                spacing={4}
                 p={2}
                 sx={{ borderBottom: '1px solid #ccc' }}
               >
-                <Typography variant={'h6'}>{item.name}</Typography>
-                <Stack direction={'row'} spacing={2}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => removeItem(item.name)}
-                  >
-                    Remove
-                  </Button>
-                  <Typography variant={'h6'}>{item.quantity}</Typography>
-                  <Button variant="outlined" onClick={() => addItem(item.name)}>
-                    Add
-                  </Button>
-                </Stack>
+                <Typography variant="h6" flex="1">
+                  {item.name}
+                </Typography>
+                <Typography variant="h6" flex="1" textAlign="center">
+                  {item.quantity}
+                </Typography>
               </Stack>
             ))
           )}
@@ -275,34 +355,34 @@ export default function Home() {
       </Box>
       <Box
         mt={2}
-        display={'flex'}
-        flexDirection={'column'}
-        alignItems={'center'}
-        width={'100%'}
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        width="90%"
+        height="30vh"
+        overflow="auto"
       >
         <Button
           variant="contained"
           onClick={generateRecipeRecommendations}
           disabled={filteredInventory.length === 0}
+          size="large"
         >
           Generate Recipe Recommendations
         </Button>
         {recommendedRecipes && (
           <Box
-            width="800px"
-            bgcolor={'#FFFAFA'}
-            display={'flex'}
-            flexDirection={'column'}
-            justifyContent={'center'}
-            alignItems={'center'}
-            p={2}
             mt={2}
-            border={'1px solid #ccc'}
+            width="100%"
+            maxHeight="100%"
+            overflow="auto"
+            p={2}
+            bgcolor={'#f9f9f9'}
           >
-            <Typography variant={'h6'} color={'#333'}>
-              Recipe Recommendations:
+            <Typography variant="h5" mb={2}>
+              Recommended Recipes:
             </Typography>
-            <Typography variant={'body1'} color={'#333'}>
+            <Typography variant="body1" whiteSpace="pre-line">
               {recommendedRecipes}
             </Typography>
           </Box>
